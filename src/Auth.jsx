@@ -1,122 +1,171 @@
 import React, { useState } from "react";
-import { Lock, User, Mail } from "lucide-react";
+import {
+  Lock,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  Loader2,
+  Chrome,
+} from "lucide-react";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from "firebase/auth";
+import { auth } from "./firebase";
 
 export default function Auth({ onLoginSuccess }) {
-  const [isLoginMode, setIsLoginMode] = useState(true);
-  const [formData, setFormData] = useState({
-    name: "",
+  const [login, setLogin] = useState(true);
+  const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [toast, setToast] = useState("");
+
+  const [data, setData] = useState({
     email: "",
-    password: ""
+    password: "",
   });
 
-  const toggleMode = () => setIsLoginMode(!isLoginMode);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const notify = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
   };
 
-  const handleSubmit = (e) => {
+  const errorMap = (code) => {
+    switch (code) {
+      case "auth/user-not-found":
+        return "User does not exist";
+      case "auth/wrong-password":
+        return "Wrong password";
+      case "auth/email-already-in-use":
+        return "Email already in use";
+      case "auth/weak-password":
+        return "Password must be 6+ characters";
+      default:
+        return "Authentication failed";
+    }
+  };
+
+  const submit = async (e) => {
     e.preventDefault();
-    // Simulate login/registration
-    console.log(`${isLoginMode ? 'Login' : 'Signup'} attempt:`, formData);
-    onLoginSuccess();
+    setLoading(true);
+    try {
+      login
+        ? await signInWithEmailAndPassword(auth, data.email, data.password)
+        : await createUserWithEmailAndPassword(
+            auth,
+            data.email,
+            data.password
+          );
+      notify("Login successful 🎉");
+      setTimeout(onLoginSuccess, 800);
+    } catch (e) {
+      setError(errorMap(e.code));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const googleLogin = async () => {
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+      notify("Logged in with Google 🎉");
+      setTimeout(onLoginSuccess, 800);
+    } catch {
+      setError("Google login failed");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 to-cyan-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center">
-        <div className="w-14 h-14 rounded-full bg-gradient-to-r from-teal-500 to-cyan-400 flex items-center justify-center shadow-md mb-4">
-          <Lock className="w-7 h-7 text-white" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-cyan-50 px-4">
+      {toast && (
+        <div className="fixed top-6 bg-teal-500 text-white px-6 py-3 rounded-lg shadow">
+          {toast}
         </div>
-        <h1 className="text-2xl font-bold text-slate-800 mb-1">
-          AI Wellness Coach
-        </h1>
-        <p className="text-sm text-slate-500 mb-6">
-          {isLoginMode ? "Log in to continue" : "Create your account"}
-        </p>
+      )}
 
-        <form className="w-full space-y-4" onSubmit={handleSubmit}>
-          {!isLoginMode && (
-            <div>
-              <label className="text-sm text-slate-600">Name</label>
-              <div className="flex items-center mt-1 border border-gray-200 rounded-lg px-3 py-2 bg-slate-50">
-                <User className="w-4 h-4 text-slate-400 mr-2" />
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  placeholder="Your Name"
-                  className="flex-1 bg-transparent outline-none text-sm"
-                  required={!isLoginMode}
-                />
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="text-sm text-slate-600">Email</label>
-            <div className="flex items-center mt-1 border border-gray-200 rounded-lg px-3 py-2 bg-slate-50">
-              <Mail className="w-4 h-4 text-slate-400 mr-2" />
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="you@example.com"
-                className="flex-1 bg-transparent outline-none text-sm"
-                required
-              />
-            </div>
+      <div className="bg-white w-full max-w-md p-8 rounded-2xl shadow-xl">
+        <div className="text-center mb-6">
+          <div className="mx-auto w-14 h-14 bg-teal-500 rounded-full flex items-center justify-center">
+            <Lock className="text-white" />
           </div>
+          <h2 className="text-2xl font-bold mt-3">AI Wellness Coach</h2>
+        </div>
 
-          <div>
-            <label className="text-sm text-slate-600">Password</label>
-            <div className="flex items-center mt-1 border border-gray-200 rounded-lg px-3 py-2 bg-slate-50">
-              <Lock className="w-4 h-4 text-slate-400 mr-2" />
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                placeholder="••••••••"
-                className="flex-1 bg-transparent outline-none text-sm"
-                required
-              />
-            </div>
+        {error && (
+          <div className="flex gap-2 items-center bg-red-50 text-red-600 p-3 rounded mb-4">
+            <AlertCircle className="w-5 h-5" />
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={submit} className="space-y-4">
+          <input
+            type="email"
+            placeholder="Email"
+            onChange={(e) =>
+              setData({ ...data, email: e.target.value })
+            }
+            className="w-full border p-2 rounded"
+            required
+          />
+
+          <div className="relative">
+            <input
+              type={show ? "text" : "password"}
+              placeholder="Password"
+              onChange={(e) =>
+                setData({ ...data, password: e.target.value })
+              }
+              className="w-full border p-2 rounded pr-10"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShow(!show)}
+              className="absolute right-3 top-2.5 text-gray-400"
+            >
+              {show ? <EyeOff /> : <Eye />}
+            </button>
           </div>
 
           <button
-            type="submit"
-            className="w-full py-2.5 rounded-lg bg-gradient-to-r from-teal-500 to-cyan-400 text-white font-semibold shadow-md hover:shadow-lg transition"
+            disabled={loading}
+            className="w-full bg-teal-500 text-white py-2 rounded flex justify-center gap-2"
           >
-            {isLoginMode ? "Log In" : "Create Account"}
+            {loading && <Loader2 className="animate-spin" />}
+            {login ? "Log In" : "Sign Up"}
           </button>
         </form>
 
-        <p className="text-sm text-slate-500 mt-4">
-          {isLoginMode ? (
+        <button
+          onClick={googleLogin}
+          className="w-full mt-4 border py-2 rounded flex justify-center gap-2"
+        >
+          <Chrome />
+          Continue with Google
+        </button>
+
+        <p className="text-center mt-4 text-sm">
+          {login ? (
             <>
-              Need an account?{" "}
+              No account?{" "}
               <button
-                onClick={toggleMode}
-                className="text-teal-500 font-medium hover:underline"
+                onClick={() => setLogin(false)}
+                className="text-teal-600"
               >
-                Sign Up
+                Sign up
               </button>
             </>
           ) : (
             <>
-              Already have an account?{" "}
+              Have an account?{" "}
               <button
-                onClick={toggleMode}
-                className="text-teal-500 font-medium hover:underline"
+                onClick={() => setLogin(true)}
+                className="text-teal-600"
               >
-                Log In
+                Log in
               </button>
             </>
           )}

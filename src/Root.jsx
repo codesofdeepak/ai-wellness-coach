@@ -1,66 +1,35 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Auth from './Auth';
-import App from './App';
-import Exercise from './Exercise';
-import NLPDiet from './NLPDiet';
-
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import App from "./App";
+import Auth from "./Auth";
+import Exercise from "./Exercise";
+import { useAuth } from "./AuthContext";
 
 export default function Root() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-  };
+  const { user, logout } = useAuth();
 
   return (
-    <Router>
-      <Routes>
-        <Route 
-          path="/" 
-          element={
-            isAuthenticated ? 
-            <Navigate to="/app" replace /> : 
-            <Auth onLoginSuccess={handleLoginSuccess} />
-          } 
-        />
-        <Route 
-          path="/auth" 
-          element={
-            isAuthenticated ? 
-            <Navigate to="/app" replace /> : 
-            <Auth onLoginSuccess={handleLoginSuccess} />
-          } 
-        />
-        <Route 
-          path="/app" 
-          element={
-            isAuthenticated ? 
-            <App onLogout={handleLogout} /> : 
-            <Navigate to="/" replace />
-          } 
-        />
-        <Route 
-          path="/exercise" 
-          element={
-            isAuthenticated ? 
-            <Exercise /> : 
-            <Navigate to="/" replace />
-          } 
-        />
-        <Route 
-        path="/diet" 
+    <Routes>
+      <Route
+        path="/"
         element={
-          isAuthenticated ? 
-          <NLPDiet /> : 
-          <Navigate to="/" replace />
-          } 
-        />
-      </Routes>
-    </Router>
+          user ? <Navigate to="/app" /> : <Auth onLoginSuccess={() => {}} />
+        }
+      />
+
+      <Route
+        path="/app"
+        element={
+          user ? <App onLogout={logout} /> : <Navigate to="/" />
+        }
+      />
+
+      <Route
+        path="/exercise"
+        element={
+          user ? <Exercise /> : <Navigate to="/" />
+        }
+      />
+    </Routes>
   );
 }
