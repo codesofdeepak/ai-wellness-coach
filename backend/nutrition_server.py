@@ -5,6 +5,8 @@ import requests
 import os
 import json
 
+
+
 app = Flask(__name__)
 CORS(app)
 
@@ -249,6 +251,9 @@ def analyze_meal():
             "food_count": len(food_items),
             "total_nutrition": analysis
         })
+    
+
+    
         
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
